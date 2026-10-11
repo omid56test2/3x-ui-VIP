@@ -1,0 +1,46 @@
+name: Extract 3X-UI source ZIP
+
+on:
+  push:
+    paths:
+      - '3x-ui-lucity-reverse-proxy.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Extract source into repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_FILE="3x-ui-lucity-reverse-proxy.zip"
+          test -f "$ZIP_FILE" || { echo "ZIP file not found at repository root: $ZIP_FILE"; exit 1; }
+
+          rm -rf /tmp/3xui-extract
+          mkdir -p /tmp/3xui-extract
+          unzip -q "$ZIP_FILE" -d /tmp/3xui-extract
+
+          SOURCE_DIR="/tmp/3xui-extract/3x-ui-main"
+          test -d "$SOURCE_DIR" || { echo "Expected folder 3x-ui-main was not found inside the ZIP."; exit 1; }
+
+          cp -a "$SOURCE_DIR"/. .
+          rm -f "$ZIP_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No extracted changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Extract 3X-UI source ZIP"
+          git push
